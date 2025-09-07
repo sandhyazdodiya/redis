@@ -23,7 +23,7 @@ class User(AbstractUser):
 
 
 class Candidate(models.Model):
-    candidate = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    candidate = models.ForeignKey(User, on_delete=models.CASCADE)
     dob = models.DateField(blank=True, null=True)
     gender = models.CharField(max_length=255, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
@@ -68,7 +68,7 @@ class Company(models.Model):
 class Job(models.Model):
     id = models.IntegerField(primary_key=True)
     company = models.ForeignKey(Company, models.DO_NOTHING, blank=True, null=True)
-    recruiter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    recruiter = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, blank=True, null=True)
     job_description = models.CharField(max_length=1000, blank=True, null=True)
     job_type = models.CharField(max_length=10, blank=True, null=True)
@@ -100,7 +100,7 @@ class JobApplication(models.Model):
 class ApplicationFeedback(models.Model):
     id = models.IntegerField(primary_key=True)
     application = models.ForeignKey('JobApplication', models.DO_NOTHING, blank=True, null=True)
-    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE)
     round_name = models.CharField(max_length=17, blank=True, null=True)
     feedback = models.JSONField(blank=True, null=True)
     rating = models.IntegerField(blank=True, null=True)

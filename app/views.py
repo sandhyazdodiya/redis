@@ -1,50 +1,73 @@
-from rest_framework import viewsets
-from .models import User, Company, Candidate, Job, JobApplication
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from .models import Candidate
-from .serializers import CandidateSerializer
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import UserSerializer
+from .models import (
+    User, Candidate, CandidateEducation, Company, Job,
+    JobApplication, ApplicationFeedback, Offer, ActivityLogs
+)
+from .serializers import (
+    UserSerializer, CandidateSerializer, CandidateEducationSerializer, CompanySerializer,
+    JobSerializer, JobApplicationSerializer, ApplicationFeedbackSerializer, OfferSerializer,
+    ActivityLogsSerializer
+)
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+class UserAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            user = get_object_or_404(User, pk=pk)
+            serializer = UserSerializer(user)
+            return Response(serializer.data)
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data)
 
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            user.set_password(request.data['password'])
+            user.save()
+            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-from django.core.cache import cache
-from rest_framework.response import Response
-from rest_framework.views import APIView
+    def put(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = UserSerializer(user, data=request.data)
+        if serializer.is_valid():
+            if 'password' in request.data:
+                user.set_password(request.data['password'])
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class CachedHelloWorld(APIView):
-    def get(self, request):
-        data = cache.get("hello_world")
+    def patch(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            if 'password' in request.data:
+                user.set_password(request.data['password'])
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not data:
-            data = {"message": "Hello, World!"}
-            cache.set("hello_world", data, timeout=120)  # cache for 60 seconds
+    def delete(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        return Response(data)
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from .throttles import RedisRateThrottle
-
-class MyAPIView(APIView):
-    throttle_classes = [RedisRateThrottle]
-
-    def get(self, request):
-        return Response({"msg": "You are within the limit!"})
-
-
-class CandidateListCreateAPIView(APIView):
-    def get(self, request):
-        candidates = Candidate.objects.all()
-        serializer = CandidateSerializer(candidates, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class CandidateAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(Candidate, pk=pk)
+            serializer = CandidateSerializer(obj)
+            return Response(serializer.data)
+        objs = Candidate.objects.all()
+        serializer = CandidateSerializer(objs, many=True)
+        return Response(serializer.data)
 
     def post(self, request):
         serializer = CandidateSerializer(data=request.data)
@@ -53,33 +76,320 @@ class CandidateListCreateAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-class CandidateDetailAPIView(APIView):
-    def get(self, request, pk):
-        candidate = get_object_or_404(Candidate, pk=pk)
-        serializer = CandidateSerializer(candidate)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
     def put(self, request, pk):
-        candidate = get_object_or_404(Candidate, pk=pk)
-        serializer = CandidateSerializer(candidate, data=request.data)
+        obj = get_object_or_404(Candidate, pk=pk)
+        serializer = CandidateSerializer(obj, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
-        candidate = get_object_or_404(Candidate, pk=pk)
-        serializer = CandidateSerializer(candidate, data=request.data, partial=True)
+        obj = get_object_or_404(Candidate, pk=pk)
+        serializer = CandidateSerializer(obj, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        candidate = get_object_or_404(Candidate, pk=pk)
-        candidate.delete()
-        return Response({"message": "Candidate deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        obj = get_object_or_404(Candidate, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+# Repeat similar for other models:
 
+class CandidateEducationAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(CandidateEducation, pk=pk)
+            serializer = CandidateEducationSerializer(obj)
+            return Response(serializer.data)
+        objs = CandidateEducation.objects.all()
+        serializer = CandidateEducationSerializer(objs, many=True)
+        return Response(serializer.data)
 
+    def post(self, request):
+        serializer = CandidateEducationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(CandidateEducation, pk=pk)
+        serializer = CandidateEducationSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(CandidateEducation, pk=pk)
+        serializer = CandidateEducationSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(CandidateEducation, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CompanyAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(Company, pk=pk)
+            serializer = CompanySerializer(obj)
+            return Response(serializer.data)
+        objs = Company.objects.all()
+        serializer = CompanySerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CompanySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(Company, pk=pk)
+        serializer = CompanySerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(Company, pk=pk)
+        serializer = CompanySerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(Company, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class JobAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(Job, pk=pk)
+            serializer = JobSerializer(obj)
+            return Response(serializer.data)
+        objs = Job.objects.all()
+        serializer = JobSerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = JobSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(Job, pk=pk)
+        serializer = JobSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(Job, pk=pk)
+        serializer = JobSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(Job, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class JobApplicationAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(JobApplication, pk=pk)
+            serializer = JobApplicationSerializer(obj)
+            return Response(serializer.data)
+        objs = JobApplication.objects.all()
+        serializer = JobApplicationSerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = JobApplicationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(JobApplication, pk=pk)
+        serializer = JobApplicationSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(JobApplication, pk=pk)
+        serializer = JobApplicationSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(JobApplication, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ApplicationFeedbackAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(ApplicationFeedback, pk=pk)
+            serializer = ApplicationFeedbackSerializer(obj)
+            return Response(serializer.data)
+        objs = ApplicationFeedback.objects.all()
+        serializer = ApplicationFeedbackSerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ApplicationFeedbackSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(ApplicationFeedback, pk=pk)
+        serializer = ApplicationFeedbackSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(ApplicationFeedback, pk=pk)
+        serializer = ApplicationFeedbackSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(ApplicationFeedback, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class OfferAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(Offer, pk=pk)
+            serializer = OfferSerializer(obj)
+            return Response(serializer.data)
+        objs = Offer.objects.all()
+        serializer = OfferSerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = OfferSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(Offer, pk=pk)
+        serializer = OfferSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(Offer, pk=pk)
+        serializer = OfferSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(Offer, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ActivityLogsAPIView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            obj = get_object_or_404(ActivityLogs, pk=pk)
+            serializer = ActivityLogsSerializer(obj)
+            return Response(serializer.data)
+        objs = ActivityLogs.objects.all()
+        serializer = ActivityLogsSerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ActivityLogsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        obj = get_object_or_404(ActivityLogs, pk=pk)
+        serializer = ActivityLogsSerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        obj = get_object_or_404(ActivityLogs, pk=pk)
+        serializer = ActivityLogsSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(ActivityLogs, pk=pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class RegisterView(APIView):
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            user.set_password(request.data['password'])
+            user.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user_id': user.id
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
+        if user:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user_id': user.id
+            })
+        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
