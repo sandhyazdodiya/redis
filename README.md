@@ -1,82 +1,128 @@
-# Django REST API Example
+# Django Project - Job Portal API
 
-This project provides RESTful APIs for user registration, login (JWT authentication), and candidate creation using Django and Django REST Framework.
-
-## Features
-
-- **User Registration** (`/register/`)
-- **User Login** (`/login/`)
-- **Candidate Creation** (`/candidates/`)
-- JWT authentication for secure API access
+This project is a Django REST API for a job portal, supporting user registration, login, and CRUD operations for candidates, companies, jobs, applications, feedback, offers, and activity logs.
 
 ## Setup
 
 1. **Clone the repository**
+   ```bash
+   git clone <repo-url>
+   cd django_project
+   ```
+
 2. **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    pip install djangorestframework djangorestframework-simplejwt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
+
 3. **Apply migrations**
-    ```bash
-    python manage.py migrate
-    ```
+   ```bash
+   python manage.py migrate
+   ```
+
 4. **Run the server**
-    ```bash
-    python manage.py runserver
-    ```
+   ```bash
+   python manage.py runserver
+   ```
 
-## API Usage
+## API Endpoints
 
-### 1. Register a User
+### Authentication
 
+- **Register:**  
+  `POST /register/`  
+  **Body:**  
+  ```json
+  {
+    "username": "yourusername",
+    "password": "yourpassword"
+  }
+  ```
+
+- **Login:**  
+  `POST /login/`  
+  **Body:**  
+  ```json
+  {
+    "username": "yourusername",
+    "password": "yourpassword"
+  }
+  ```
+
+### Candidate CRUD
+
+- **Create:**  
+  `POST /candidates/`  
+  **Body:**  
+  ```json
+  {
+    "field1": "value1",
+    "field2": "value2"
+  }
+  ```
+
+- **Read All:**  
+  `GET /candidates/`
+
+- **Read One:**  
+  `GET /candidates/<id>/`
+
+- **Update:**  
+  `PUT /candidates/<id>/`  
+  **Body:**  
+  ```json
+  {
+    "field1": "newvalue1",
+    "field2": "newvalue2"
+  }
+  ```
+
+- **Partial Update:**  
+  `PATCH /candidates/<id>/`  
+  **Body:**  
+  ```json
+  {
+    "field1": "partialvalue"
+  }
+  ```
+
+- **Delete:**  
+  `DELETE /candidates/<id>/`
+
+### Other Models
+
+Similar CRUD endpoints exist for:
+- `/users/`
+- `/candidate-educations/`
+- `/companies/`
+- `/jobs/`
+- `/job-applications/`
+- `/application-feedbacks/`
+- `/offers/`
+- `/activity-logs/`
+
+## Example Curl Commands
+
+**Register**
 ```bash
 curl -X POST http://localhost:8000/register/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "testuser@example.com",
-    "password": "yourpassword"
-  }'
+     -H "Content-Type: application/json" \
+     -d '{"username": "testuser", "password": "testpass123"}'
 ```
 
-**Response:**
-```json
-{
-  "refresh": "<refresh_token>",
-  "access": "<access_token>",
-  "user_id": 1
-}
-```
-
-### 2. Login
-
+**Login**
 ```bash
 curl -X POST http://localhost:8000/login/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "yourpassword"
-  }'
+     -H "Content-Type: application/json" \
+     -d '{"username": "testuser", "password": "testpass123"}'
 ```
 
-**Response:**
-```json
-{
-  "refresh": "<refresh_token>",
-  "access": "<access_token>",
-  "user_id": 1
-}
-```
-
-### 3. Create Candidate
-
+**Create Candidate**
 ```bash
 curl -X POST http://localhost:8000/candidates/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <access_token>" \
-  -d '{
-    "candidate": 1,
+     -H "Content-Type: application/json" \
+     -d '{
+    "candidate": 16,
     "dob": "1990-01-01",
     "gender": "female",
     "address": "123 Main St",
@@ -87,11 +133,23 @@ curl -X POST http://localhost:8000/candidates/ \
   }'
 ```
 
-**Note:**  
-- Replace `<access_token>` with the token received from login/register.
-- Replace `candidate` value (`1`) with the actual user ID.
+**Get All Candidates**
+```bash
+curl http://localhost:8000/candidates/
+```
 
-## Security
+**Get Candidate by ID**
+```bash
+curl http://localhost:8000/candidates/1/
+```
 
-- All sensitive endpoints require JWT authentication.
-- Always use HTTPS in production.
+**Update Candidate**
+```bash
+curl -X PUT http://localhost:8000/candidates/1/ \
+     -H "Content-Type: application/json" \
+     -d '{"field1": "newvalue1", "field2": "newvalue2"}'
+```
+
+**Delete Candidate**
+```bash
+curl -X
