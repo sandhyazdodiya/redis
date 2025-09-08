@@ -4,6 +4,9 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.contrib.auth.hashers import make_password
+from rest_framework.authtoken.models import Token
 
 from .models import (
     User, Candidate, CandidateEducation, Company, Job,
@@ -60,6 +63,7 @@ class UserAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CandidateAPIView(APIView):
+
     def get(self, request, pk=None):
         if pk:
             obj = get_object_or_404(Candidate, pk=pk)
@@ -70,6 +74,7 @@ class CandidateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        print("Eequest header", request.headers)
         serializer = CandidateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -290,6 +295,7 @@ class ApplicationFeedbackAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class OfferAPIView(APIView):
+
     def get(self, request, pk=None):
         if pk:
             obj = get_object_or_404(Offer, pk=pk)
@@ -365,31 +371,34 @@ class ActivityLogsAPIView(APIView):
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            user.set_password(request.data['password'])
-            user.save()
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user_id': user.id
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if User.objects.filter(username=username).exists():
+            return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create(
+            username=username,
+            password=make_password(password)
+        )
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "user_id": user.id}, status=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        username = request.data.get("username")
+        password = request.data.get("password")
+
         user = authenticate(username=username, password=password)
-        if user:
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user_id': user.id
-            })
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not user:
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "user_id": user.id})
